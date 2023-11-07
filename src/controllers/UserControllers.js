@@ -1,40 +1,65 @@
-const Users = require("../models/UserModel")
+const Users = require("../models/UserModel");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs"); // Import the bcrypt library
+
+require('dotenv').config();
 
 const register = async (req, res) => {
+  const { email, username, password } = req.body;
 
-    const {email, username, password} = req.body;
-
-    try{
-
-        const RegisterUser = new Users({
-            email,
-            username,
-            password
-        })
-
-        const existingUser = await Users.countDocuments({email, password})
-
-        if(existingUser === 1) {
-            return res.status(400).json({ error: "User Already Exists" });
-        }
-        if (!email) {
-            return res.status(400).json({ error: "Email is required" });
-          } else if (!username) {
-            return res.status(400).json({ error: "Username is required" });
-          }else if (!password) {
-            return res.status(400).json({ error: "Password is required" });
-          }
-
-        await RegisterUser.save();
-
-
-    res.status(201).json({ msg: "User Registered Successfully" });
-
-    }catch(error) {
-        console.error("Error while creating User", error);
-        res.status(500).json({ error: "Internal Server Error" });
+  try {
+    if (!email || !username || !password) {
+      return res.status(400).json({ error: "Email, username, and password are required" });
     }
 
-}
+    const existingUser = await Users.findOne({ email });
 
-module.exports = {register}
+    if (existingUser) {
+      return res.status(400).json({ error: "User Already Exists" });
+    }
+
+    // Hash the password before saving it
+    const saltRounds = 10; // You can adjust the number of salt rounds
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    const newUser = new Users({ email, username, password: hashedPassword });
+    await newUser.save();
+
+    res.status(201).json({ msg: "User Registered Successfully" });
+  } catch (error) {
+    console.error("Error while creating User", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+const login = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    const user = await Users.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({ error: "User not found" });
+    }
+
+    // Compare the hashed password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(400).json({ error: "Invalid password" });
+    }
+
+    const token = jwt.sign({ id: user._id }, process.env.SECRET_KEY, { expiresIn: "1h" });
+
+    res.status(200).json({ msg: "Login Successful", token });
+  } catch (error) {
+    console.error("Error while logging in", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+module.exports = { register, login };
