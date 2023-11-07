@@ -12,6 +12,12 @@ const createNotes = async (req, res) => {
       updatedAt,
     });
 
+    const existingNotesCount = await Notes.countDocuments({ title });
+
+    if (existingNotesCount >= 1) {
+      return res.status(400).json({ error: "You can't create more than two notes with the same title" });
+    }
+
     if (!title) {
       return res.status(400).json({ error: "Title is required" });
     } else if (!body) {

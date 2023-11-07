@@ -2,7 +2,9 @@ const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
 const cors =  require("cors");
-const Noteroutes = require("./src/routes/note.routes.js")
+const Noteroutes = require("./src/routes/note.routes.js");
+const Authroutes = require("./src/routes/auth.routes.js")
+
 
 const { connectToDatabase } = require("./src/config/database")
 
@@ -15,6 +17,7 @@ app.use(cors());
 
 
 app.use('/notes', Noteroutes)
+app.use('/auth', Authroutes)
 
 
 connectToDatabase();
